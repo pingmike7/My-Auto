@@ -1,0 +1,59 @@
+name: Add Godlike Server Time
+
+on:
+  # 手动触发
+  workflow_dispatch:
+
+  # 每 90 分钟运行一次（UTC 时间）
+  schedule:
+    # 第一个表达式：在 0, 3, 6, 9, 12, 15, 18, 21 点的第0分钟运行
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+    # 第二个表达式：在 1, 4, 7, 10, 13, 16, 19, 22 点的第30分钟运行
+    - cron: '30 1,4,7,10,13,16,19,22 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  add_time_job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ✅ 检出私库 godlike-auto
+      - name: Checkout private repo (godlike-auto)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/godlike-auto
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: scripts
+
+      # 🐍 安装 Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 📦 安装 Playwright 和依赖
+      - name: Install Playwright and dependencies
+        working-directory: scripts
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      # 🚀 运行脚本
+      - name: Run Time Adder Script
+        working-directory: scripts
+        env:
+          GODLIKE_COOKIE: ${{ secrets.GODLIKE_COOKIE }}
+          GODLIKE_EMAIL: ${{ secrets.PTERODACTYL_EMAIL }}
+          GODLIKE_PASSWORD: ${{ secrets.GODLIKE_PASSWORD }}
+        run: python -u main.py
+
+      # 🖼️ 上传错误截图（只在脚本目录下查找）
+      - name: Upload error artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshots
+          path: scripts/*.png
