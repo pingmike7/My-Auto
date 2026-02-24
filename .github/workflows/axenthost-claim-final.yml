@@ -3,7 +3,7 @@ name: AxentHost Auto Claim v2
 on:
   # 每 5 分钟测试一次，确认 schedule 正常
   schedule:
-    - cron: "44 * * * *"
+    - cron: "40 * * * *"
   # 手动触发
   workflow_dispatch:
 
