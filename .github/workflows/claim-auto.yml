@@ -3,7 +3,7 @@ name: AxentHost Auto Claim
 on:
   # 每小时整点运行
   schedule:
-    - cron: "0 * * * *"
+    - cron: "25 * * * *"
 
   # 手动触发
   workflow_dispatch:
