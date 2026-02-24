@@ -1,12 +1,56 @@
-name: AxentHost Auto Claim Final
+name: AxentHost Auto Claim v2
 
 on:
+  # 每 5 分钟测试一次，确认 schedule 正常
   schedule:
-    - cron: "*/5 * * * *"   # 每 5 分钟触发，测试用
+    - cron: "42 * * * *"
+  # 手动触发
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  test:
+  claim:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
-      - run: echo "Scheduled run works"
+      # ------------------------------
+      # 1️⃣ 检出私库 axenthost-auto
+      # ------------------------------
+      - name: Checkout private repo (axenthost-auto)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/axenthost-auto
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: scripts
+
+      # ------------------------------
+      # 2️⃣ 安装 Python
+      # ------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # ------------------------------
+      # 3️⃣ 安装系统依赖 + Python 依赖
+      # ------------------------------
+      - name: Install dependencies
+        working-directory: scripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          pip install --upgrade pip
+          pip install -r requirements.txt -q
+
+      # ------------------------------
+      # 4️⃣ 运行 AxentHost 脚本
+      # ------------------------------
+      - name: Run AxentHost claim script
+        working-directory: scripts
+        env:
+          AXENT_BATCH: ${{ secrets.AXENT_BATCH }}
+        run: |
+          python axent_claim.py
