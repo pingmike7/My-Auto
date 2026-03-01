@@ -1,7 +1,7 @@
 name: Zampto Auto Renew
 
 on:
-  # 每两天运行一次，UTC 00:00
+  # 每两天运行一次，UTC 18:18
   schedule:
     - cron: "18 18 */2 * *"
   # 手动触发
@@ -17,9 +17,9 @@ jobs:
 
     steps:
       # ------------------------------
-      # 1️⃣ 检出私有仓库 zampto-renew
+      # 1️⃣ 检出私有仓库 zam-auto
       # ------------------------------
-      - name: Checkout private repo (zampto-renew)
+      - name: Checkout private repo (zam-auto)
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/zam-auto
