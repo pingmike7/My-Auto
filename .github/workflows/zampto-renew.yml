@@ -4,7 +4,6 @@ on:
   # 每两天运行一次，UTC 18:18
   schedule:
     - cron: "18 18 */2 * *"
-  # 手动触发
   workflow_dispatch:
 
 permissions:
@@ -33,12 +32,23 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y xvfb curl
+          # 下载 hysteria
           curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o hysteria
           chmod +x hysteria
           sudo mv hysteria /usr/local/bin/hysteria
+          # 确认 hysteria 可用
+          hysteria --version
 
       # ------------------------------
-      # 3️⃣ 安装 Python
+      # 3️⃣ 设置 DISPLAY 环境，保证 Xvfb 可用
+      # ------------------------------
+      - name: Set DISPLAY
+        run: |
+          export DISPLAY=:99
+        shell: bash
+
+      # ------------------------------
+      # 4️⃣ 安装 Python
       # ------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,7 +56,7 @@ jobs:
           python-version: "3.11"
 
       # ------------------------------
-      # 4️⃣ 安装 Python 依赖
+      # 5️⃣ 安装 Python 依赖
       # ------------------------------
       - name: Install Python packages
         working-directory: scripts
@@ -55,12 +65,13 @@ jobs:
           pip install seleniumbase pyvirtualdisplay requests
 
       # ------------------------------
-      # 5️⃣ 运行 Zampto 续期脚本
+      # 6️⃣ 运行 Zampto 续期脚本
       # ------------------------------
       - name: Run renew script
         working-directory: scripts
         env:
           ZAMPTO_BATCH: ${{ secrets.ZAMPTO_BATCH }}
           HY2_URL: ${{ secrets.HY2_URL }}
+          DISPLAY: ":99"
         run: |
           python zampto-renew.py
