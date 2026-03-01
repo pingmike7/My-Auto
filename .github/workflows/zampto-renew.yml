@@ -1,0 +1,66 @@
+name: Zampto Auto Renew
+
+on:
+  # 每两天运行一次，UTC 00:00
+  schedule:
+    - cron: "18 18 */2 * *"
+  # 手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ------------------------------
+      # 1️⃣ 检出私有仓库 zampto-renew
+      # ------------------------------
+      - name: Checkout private repo (zampto-renew)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/zam-auto
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: scripts
+
+      # ------------------------------
+      # 2️⃣ 安装系统依赖 + hysteria
+      # ------------------------------
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y xvfb curl
+          curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o hysteria
+          chmod +x hysteria
+          sudo mv hysteria /usr/local/bin/hysteria
+
+      # ------------------------------
+      # 3️⃣ 安装 Python
+      # ------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ------------------------------
+      # 4️⃣ 安装 Python 依赖
+      # ------------------------------
+      - name: Install Python packages
+        working-directory: scripts
+        run: |
+          pip install --upgrade pip
+          pip install seleniumbase pyvirtualdisplay requests
+
+      # ------------------------------
+      # 5️⃣ 运行 Zampto 续期脚本
+      # ------------------------------
+      - name: Run renew script
+        working-directory: scripts
+        env:
+          ZAMPTO_BATCH: ${{ secrets.ZAMPTO_BATCH }}
+          HY2_URL: ${{ secrets.HY2_URL }}
+        run: |
+          python zampto-renew.py
