@@ -4,6 +4,7 @@ on:
   # 每两天运行一次，UTC 18:18
   schedule:
     - cron: "18 18 */2 * *"
+  # 手动触发
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,7 @@ jobs:
       # ------------------------------
       # 2️⃣ 安装系统依赖 + hysteria
       # ------------------------------
-      - name: Install system dependencies
+      - name: Install system dependencies + hysteria
         run: |
           sudo apt update
           sudo apt install -y xvfb curl
@@ -36,11 +37,11 @@ jobs:
           curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o hysteria
           chmod +x hysteria
           sudo mv hysteria /usr/local/bin/hysteria
-          # 确认 hysteria 可用
-          hysteria --version
+          # 确认可用，禁止 update check
+          /usr/local/bin/hysteria --disable-update-check version
 
       # ------------------------------
-      # 3️⃣ 设置 DISPLAY 环境，保证 Xvfb 可用
+      # 3️⃣ 设置 DISPLAY 环境变量，保证 Xvfb 可用
       # ------------------------------
       - name: Set DISPLAY
         run: |
