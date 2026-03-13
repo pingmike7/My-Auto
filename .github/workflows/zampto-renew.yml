@@ -2,7 +2,7 @@ name: Zampto Auto Renew
 
 on:
   schedule:
-    - cron: "0 21 * * *"   # 每两天 UTC 00:00
+    - cron: "0 20 * * *"   # 每两天 UTC 00:00
   workflow_dispatch:
 
 permissions:
