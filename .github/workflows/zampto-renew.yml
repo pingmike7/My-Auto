@@ -30,11 +30,7 @@ jobs:
       - name: 📥 检出公开仓库
         uses: actions/checkout@v4
       
-      # 步骤 1.5: 创建输出目录
-      - name: 📁 创建输出目录
-        run: |
-          mkdir -p ${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ env.PROJECT_DIR }}/screenshots
-
+      
       # 步骤 2: 检出私有仓库
       - name: 🔐 检出私有仓库
         uses: actions/checkout@v4
@@ -44,6 +40,13 @@ jobs:
           ref: main
           path: ${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ env.PROJECT_DIR }}
           fetch-depth: 1
+
+       # 步骤 1.5: 创建输出目录
+      - name: 📁 创建输出目录
+        run: |
+          mkdir -p screenshots
+        working-directory: ${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ env.PROJECT_DIR }}
+
 
       # 步骤 2: 设置 Python 环境
       - name: 🐍 设置 Python 3.11
