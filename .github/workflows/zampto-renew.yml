@@ -106,6 +106,7 @@ jobs:
         with:
           name: zampto-screenshots-${{ github.run_id }}
           path: ${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ env.PROJECT_DIR }}/screenshots/
+          if-no-files-found: ignore
           retention-days: 7
 
       # 步骤 8.5: 清理本地截图
