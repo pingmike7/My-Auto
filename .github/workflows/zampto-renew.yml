@@ -70,7 +70,7 @@ jobs:
       # 步骤 5: 安装 Hysteria2（如果需要代理）
       - name: 📡 安装 Hysteria2
         run: |
-          if [ -n "${{ secrets.ZAMPTO_HY2_URL }}" ]; then
+          if [ -n "${{ secrets.ZAMPTO_HY2_PROXY_URL }}" ]; then
             echo "安装 Hysteria2..."
             curl -L -o hysteria \
               https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64
@@ -93,7 +93,7 @@ jobs:
       - name: 🚀 执行 ${{ env.SCRIPT_DESC }}
         env:
           ZAMPTO_BATCH: ${{ secrets.ZAMPTO_BATCH }}
-          HY2_URL: ${{ secrets.ZAMPTO_HY2_URL }}
+          HY2_PROXY_URL: ${{ secrets.ZAMPTO_HY2_PROXY_URL }}
           SOCKS_PORT: ${{ secrets.SOCKS_PORT || '51080' }}
           SCREENSHOT_DIR: "screenshots"
         run: xvfb-run -a python ${{ env.SCRIPT_NAME }}
