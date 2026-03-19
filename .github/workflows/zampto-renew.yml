@@ -2,7 +2,7 @@ name: Zampto Auto Renew
 
 on:
   schedule:
-    - cron: "0 11,23 * * *"   # 每两天 UTC 00:00
+    - cron: "0 11,23 * * *"
   workflow_dispatch:
 
 permissions:
@@ -11,10 +11,10 @@ permissions:
 jobs:
   renew:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15   # ⚠️ 建议加长一点，截图+CF可能慢
 
     steps:
-      # 1️⃣ 拉取私库 zam-auto
+      # 1️⃣ 拉取私库
       - name: Checkout private repo (zam-auto)
         uses: actions/checkout@v4
         with:
@@ -22,7 +22,7 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: scripts
 
-      # 2️⃣ 安装系统依赖 + hysteria
+      # 2️⃣ 安装系统依赖
       - name: Install system dependencies
         run: |
           sudo apt update
@@ -32,24 +32,39 @@ jobs:
           sudo mv hysteria /usr/local/bin/hysteria
           hysteria version
 
-      # 3️⃣ 安装 Python
+      # 3️⃣ Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 4️⃣ 安装 Python 依赖
+      # 4️⃣ 安装依赖
       - name: Install Python packages
         working-directory: scripts
         run: |
           pip install --upgrade pip
           pip install seleniumbase pyvirtualdisplay requests
 
-      # 5️⃣ 运行脚本
+      # 5️⃣ 创建截图目录（关键）
+      - name: Prepare screenshot directory
+        run: |
+          mkdir -p screenshots
+
+      # 6️⃣ 运行脚本
       - name: Run renew script
         working-directory: scripts
         env:
           ZAMPTO_BATCH: ${{ secrets.ZAMPTO_BATCH }}
           HY2_URL: ${{ secrets.HY2_URL }}
+          SCREENSHOT_DIR: screenshots   # ✅ 指定截图目录
         run: |
           python zampto-renew.py
+
+      # 7️⃣ 上传截图（无论成功失败）
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zampto-screenshots
+          path: scripts/screenshots/
+          retention-days: 3
