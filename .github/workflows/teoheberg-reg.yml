@@ -1,56 +1,119 @@
-name: teo
+name: Buster Register (WARP)
 
 on:
-  # 每 5 分钟测试一次，确认 schedule 正常
-  schedule:
-    - cron: "20 * * * *"
-  # 手动触发
   workflow_dispatch:
 
-permissions:
-  contents: write
+  push:
+    paths:
+      - "**.js"
+      - ".github/workflows/**"
+
+  schedule:
+    - cron: "0 18 * * *"   # 🕕 每天18:00运行（UTC）
 
 jobs:
-  claim:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  run:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
 
     steps:
-      # ------------------------------
-      # 1️⃣ 检出私库 axenthost-auto
-      # ------------------------------
-      - name: Checkout private repo (axenthost-auto)
+      # =========================
+      # 🟡 0️⃣ 拉取当前仓库
+      # =========================
+      - uses: actions/checkout@v4
+
+      # =========================
+      # 🟡 ⭐ 拉取私有仓库
+      # =========================
+      - name: Checkout private repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/axenthost-auto
+          repository: ${{ github.repository_owner }}/teoheberg-reg
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: scripts
 
-      # ------------------------------
-      # 2️⃣ 安装 Python
-      # ------------------------------
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      # =========================
+      # 🟡 Node环境
+      # =========================
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.10"
+          node-version: 20
 
-      # ------------------------------
-      # 3️⃣ 安装系统依赖 + Python 依赖
-      # ------------------------------
-      - name: Install dependencies
-        working-directory: scripts
+      # =========================
+      # 🟡 1️⃣ 启用 WARP
+      # =========================
+      - name: 创建WARP网络
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: dual
+          mode: client
+
+      # =========================
+      # 🟡 2️⃣ 安装系统依赖（音频）
+      # =========================
+      - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
-          pip install --upgrade pip
-          pip install -r requirements.txt -q
+          sudo apt-get install -y xvfb wget unzip curl jq p7zip-full \
+            pulseaudio alsa-utils ffmpeg
 
-      # ------------------------------
-      # 4️⃣ 运行 AxentHost 脚本
-      # ------------------------------
-      - name: Run AxentHost claim script
-        working-directory: scripts
-        env:
-          AXENT_BATCH: ${{ secrets.AXENT_BATCH }}
+          pulseaudio --start --exit-idle-time=-1 || true
+
+          pactl load-module module-null-sink sink_name=virtual_speaker || true
+          pactl set-default-sink virtual_speaker || true
+
+          pactl load-module module-virtual-source source_name=virtual_mic || true
+          pactl set-default-source virtual_mic || true
+
+      # =========================
+      # 🟡 3️⃣ Playwright
+      # =========================
+      - name: Install playwright
         run: |
-          python axent_claim.py
+          npm init -y
+          npm install playwright
+          npx playwright install chromium
+
+      # =========================
+      # 🟡 4️⃣ 下载 Buster
+      # =========================
+      - name: Download Buster
+        run: |
+          mkdir -p extensions/buster
+          wget -O extensions/buster/buster.zip \
+            https://github.com/dessant/buster/releases/download/v3.1.0/buster_captcha_solver_for_humans-3.1.0-chrome.zip
+
+      - name: Unzip Buster
+        run: |
+          mkdir -p extensions/buster/unpacked
+          7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
+
+          echo "📦 Buster 解压完成"
+          ls -R extensions/buster/unpacked | head -50
+
+      # =========================
+      # 🟡 5️⃣ 调试 IP
+      # =========================
+      - name: Check IP
+        run: |
+          echo "🌍 当前 IP:"
+          curl -s https://api.ipify.org
+          echo
+          curl -s https://ipinfo.io
+
+      # =========================
+      # 🟡 6️⃣ 运行脚本
+      # =========================
+      - name: Run script
+        run: |
+          mkdir -p screenshots
+          xvfb-run -a node scripts/register.js
+
+      # =========================
+      # 🟡 7️⃣ 上传截图
+      # =========================
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/*
