@@ -3,9 +3,8 @@ name: Buster Register (WARP)
 on:
   workflow_dispatch:
 
-
   schedule:
-    - cron: "0 18 * * *"   # 🕕 每天18:00运行（UTC）
+    - cron: "0 18 * * *"   # 🕕 每天18:00（UTC）
 
 jobs:
   run:
@@ -14,12 +13,12 @@ jobs:
 
     steps:
       # =========================
-      # 🟡 0️⃣ 拉取当前仓库
+      # 🟡 0️⃣ 当前仓库
       # =========================
       - uses: actions/checkout@v4
 
       # =========================
-      # 🟡 ⭐ 拉取私有仓库
+      # 🟡 ⭐ 私有仓库
       # =========================
       - name: Checkout private repo
         uses: actions/checkout@v4
@@ -31,12 +30,13 @@ jobs:
       # =========================
       # 🟡 Node环境
       # =========================
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
       # =========================
-      # 🟡 1️⃣ 启用 WARP
+      # 🟡 1️⃣ WARP
       # =========================
       - name: 创建WARP网络
         uses: fscarmen/warp-on-actions@v1.3
@@ -45,7 +45,7 @@ jobs:
           mode: client
 
       # =========================
-      # 🟡 2️⃣ 安装系统依赖（音频）
+      # 🟡 2️⃣ 系统依赖（音频）
       # =========================
       - name: Install deps
         run: |
@@ -62,24 +62,26 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🟡 3️⃣ Playwright
+      # 🟡 3️⃣ 安装 Node 依赖（关键改动）
       # =========================
-      - name: Install playwright
+      - name: Install Node dependencies
+        working-directory: scripts
         run: |
-          npm init -y
-          npm install playwright
+          npm install
           npx playwright install chromium
 
       # =========================
       # 🟡 4️⃣ 下载 Buster
       # =========================
       - name: Download Buster
+        working-directory: scripts
         run: |
           mkdir -p extensions/buster
           wget -O extensions/buster/buster.zip \
             https://github.com/dessant/buster/releases/download/v3.1.0/buster_captcha_solver_for_humans-3.1.0-chrome.zip
 
       - name: Unzip Buster
+        working-directory: scripts
         run: |
           mkdir -p extensions/buster/unpacked
           7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
@@ -98,18 +100,21 @@ jobs:
           curl -s https://ipinfo.io
 
       # =========================
-      # 🟡 6️⃣ 运行脚本
+      # 🟡 6️⃣ 运行脚本（关键改动）
       # =========================
       - name: Run script
+        working-directory: scripts
         run: |
           mkdir -p screenshots
-          xvfb-run -a node scripts/register.js
+          xvfb-run -a node register.js
 
       # =========================
-      # 🟡 7️⃣ 上传截图
+      # 🟡 7️⃣ 上传截图（路径也要改）
       # =========================
-      - uses: actions/upload-artifact@v4
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: screenshots
-          path: screenshots/*
+          path: scripts/screenshots/**
+          if-no-files-found: warn
