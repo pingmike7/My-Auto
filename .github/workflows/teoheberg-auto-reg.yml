@@ -2,9 +2,8 @@ name: Buster Register (WARP)
 
 on:
   workflow_dispatch:
-
   schedule:
-    - cron: "0 18 * * *"   # 每天 UTC 18:00 ≈ 波兰 19:00（冬季）
+    - cron: '0 18 * * *'   # 每天 UTC 18:00（≈ 波兰 19:00 冬季）
 
 jobs:
   run:
@@ -13,13 +12,13 @@ jobs:
 
     steps:
       # =========================
-      # 📥 主仓库
+      # 📥 Checkout 主仓库
       # =========================
       - name: Checkout current repo
         uses: actions/checkout@v4
 
       # =========================
-      # 📥 私库（可选，如果不用可以删）
+      # 📥 私库（可选）
       # =========================
       - name: Checkout private repo (optional)
         if: ${{ secrets.PRIVATE_REPO_TOKEN != '' }}
@@ -35,10 +34,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
       # =========================
-      # 🌐 WARP（核心）
+      # 🌐 启用 WARP
       # =========================
       - name: Enable WARP
         uses: fscarmen/warp-on-actions@v1.3
@@ -47,7 +46,7 @@ jobs:
           mode: client
 
       # =========================
-      # 📦 系统依赖 + 音频环境
+      # 📦 安装系统依赖 + 音频
       # =========================
       - name: Install dependencies
         run: |
@@ -65,7 +64,7 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🌍 IP 调试
+      # 🌍 IP 检查
       # =========================
       - name: Check IP
         run: |
@@ -75,7 +74,7 @@ jobs:
           curl -s https://ipinfo.io
 
       # =========================
-      # 📦 Playwright
+      # 📦 安装 Playwright
       # =========================
       - name: Install Playwright
         run: |
@@ -101,7 +100,7 @@ jobs:
           ls -R extensions/buster/unpacked | head -50
 
       # =========================
-      # 🚀 运行脚本
+      # 🚀 执行脚本
       # =========================
       - name: Run script
         run: |
