@@ -1,26 +1,26 @@
 name: Buster Register (WARP)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 18 * * *"   # 每天一次
 
 jobs:
   run:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       # =========================
-      # 📥 Checkout 主仓库
+      # 📥 主仓库
       # =========================
-      - name: Checkout current repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       # =========================
-      # 📥 私库（可选）
+      # 📥 私库（核心改动）
       # =========================
-      - name: Checkout private repo (optional)
+      - name: Checkout private repo
         if: ${{ secrets.PRIVATE_REPO_TOKEN }}
         uses: actions/checkout@v4
         with:
@@ -29,32 +29,41 @@ jobs:
           path: scripts
 
       # =========================
-      # ⚡ Node.js
+      # ⚠️ 没拉到直接报错（关键）
       # =========================
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+      - name: Check scripts
+        run: |
+          if [ ! -f "scripts/register.js" ]; then
+            echo "❌ 没有找到 scripts/register.js"
+            exit 1
+          fi
 
       # =========================
-      # 🌐 启用 WARP（容错）
+      # ⚡ Node
       # =========================
-      - name: Enable WARP
-        continue-on-error: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # =========================
+      # 🟡 WARP
+      # =========================
+      - name: 创建WARP网络
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
           mode: client
 
       # =========================
-      # 📦 安装系统依赖
+      # 🟡 系统依赖（补浏览器）
       # =========================
-      - name: Install dependencies
+      - name: Install deps
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             xvfb wget unzip curl jq p7zip-full \
-            pulseaudio alsa-utils ffmpeg
+            pulseaudio alsa-utils ffmpeg \
+            libnss3 libgtk-3-0 libgbm1
 
           pulseaudio --start --exit-idle-time=-1 || true
 
@@ -65,26 +74,17 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🌍 IP 检查
+      # 🟡 Playwright
       # =========================
-      - name: Check IP
-        run: |
-          echo "Current IP:"
-          curl -s https://api.ipify.org || true
-          echo
-          curl -s https://ipinfo.io || true
-
-      # =========================
-      # 📦 安装 Playwright
-      # =========================
-      - name: Install Playwright
+      - name: Install playwright
         run: |
           npm init -y
           npm install playwright
           npx playwright install chromium
+          npx playwright install-deps
 
       # =========================
-      # 📦 下载 Buster
+      # 🟡 Buster
       # =========================
       - name: Download Buster
         run: |
@@ -92,29 +92,36 @@ jobs:
           wget -O extensions/buster/buster.zip \
             https://github.com/dessant/buster/releases/download/v3.1.0/buster_captcha_solver_for_humans-3.1.0-chrome.zip
 
-      - name: Unpack Buster
+      - name: Unzip Buster
         run: |
           mkdir -p extensions/buster/unpacked
           7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
 
-          echo "Buster unpacked"
-          ls -R extensions/buster/unpacked | head -50
+      # =========================
+      # 🟡 IP 调试
+      # =========================
+      - name: Check IP
+        run: |
+          echo "🌍 当前 IP:"
+          curl -s https://api.ipify.org
+          echo
+          curl -s https://ipinfo.io
 
       # =========================
-      # 🚀 执行脚本
+      # 🟡 运行脚本（唯一关键改动）
       # =========================
       - name: Run script
         run: |
           mkdir -p screenshots
-          xvfb-run -a node register.js
+          xvfb-run -a node scripts/register.js
 
       # =========================
-      # 📤 上传截图
+      # 🟡 上传截图
       # =========================
-      - name: Upload screenshots
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/**
-          if-no-files-found: warn
+          path: |
+            screenshots/*
+            scripts/screenshots/*
