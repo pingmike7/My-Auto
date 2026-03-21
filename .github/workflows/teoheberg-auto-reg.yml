@@ -1,0 +1,120 @@
+name: Buster Register (WARP)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 18 * * *"
+
+jobs:
+  run:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      # =========================
+      # 📥 Checkout 主仓库
+      # =========================
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      # =========================
+      # 📥 私库（可选）
+      # =========================
+      - name: Checkout private repo (optional)
+        if: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/teoheberg-reg
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: scripts
+
+      # =========================
+      # ⚡ Node.js
+      # =========================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # =========================
+      # 🌐 启用 WARP（容错）
+      # =========================
+      - name: Enable WARP
+        continue-on-error: true
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: dual
+          mode: client
+
+      # =========================
+      # 📦 安装系统依赖
+      # =========================
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb wget unzip curl jq p7zip-full \
+            pulseaudio alsa-utils ffmpeg
+
+          pulseaudio --start --exit-idle-time=-1 || true
+
+          pactl load-module module-null-sink sink_name=virtual_speaker || true
+          pactl set-default-sink virtual_speaker || true
+
+          pactl load-module module-virtual-source source_name=virtual_mic || true
+          pactl set-default-source virtual_mic || true
+
+      # =========================
+      # 🌍 IP 检查
+      # =========================
+      - name: Check IP
+        run: |
+          echo "Current IP:"
+          curl -s https://api.ipify.org || true
+          echo
+          curl -s https://ipinfo.io || true
+
+      # =========================
+      # 📦 安装 Playwright
+      # =========================
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install chromium
+
+      # =========================
+      # 📦 下载 Buster
+      # =========================
+      - name: Download Buster
+        run: |
+          mkdir -p extensions/buster
+          wget -O extensions/buster/buster.zip \
+            https://github.com/dessant/buster/releases/download/v3.1.0/buster_captcha_solver_for_humans-3.1.0-chrome.zip
+
+      - name: Unpack Buster
+        run: |
+          mkdir -p extensions/buster/unpacked
+          7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
+
+          echo "Buster unpacked"
+          ls -R extensions/buster/unpacked | head -50
+
+      # =========================
+      # 🚀 执行脚本
+      # =========================
+      - name: Run script
+        run: |
+          mkdir -p screenshots
+          xvfb-run -a node register.js
+
+      # =========================
+      # 📤 上传截图
+      # =========================
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/**
+          if-no-files-found: warn
