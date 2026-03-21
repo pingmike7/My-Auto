@@ -3,10 +3,6 @@ name: Buster Register (WARP)
 on:
   workflow_dispatch:
 
-  push:
-    paths:
-      - "**.js"
-      - ".github/workflows/**"
 
   schedule:
     - cron: "0 18 * * *"   # 🕕 每天18:00运行（UTC）
