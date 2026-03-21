@@ -62,32 +62,30 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🟡 3️⃣ 安装 Node 依赖（关键改动）
+      # 🟡 3️⃣ 安装 Playwright（修复点）
       # =========================
-      - name: Install Node dependencies
-        working-directory: scripts
+      - name: Install playwright
         run: |
-          npm install
+          npm init -y
+          npm install playwright
           npx playwright install chromium
 
       # =========================
       # 🟡 4️⃣ 下载 Buster
       # =========================
       - name: Download Buster
-        working-directory: scripts
         run: |
-          mkdir -p extensions/buster
-          wget -O extensions/buster/buster.zip \
+          mkdir -p scripts/extensions/buster
+          wget -O scripts/extensions/buster/buster.zip \
             https://github.com/dessant/buster/releases/download/v3.1.0/buster_captcha_solver_for_humans-3.1.0-chrome.zip
 
       - name: Unzip Buster
-        working-directory: scripts
         run: |
-          mkdir -p extensions/buster/unpacked
-          7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
+          mkdir -p scripts/extensions/buster/unpacked
+          7z x -y scripts/extensions/buster/buster.zip -oscripts/extensions/buster/unpacked
 
           echo "📦 Buster 解压完成"
-          ls -R extensions/buster/unpacked | head -50
+          ls -R scripts/extensions/buster/unpacked | head -50
 
       # =========================
       # 🟡 5️⃣ 调试 IP
@@ -100,16 +98,15 @@ jobs:
           curl -s https://ipinfo.io
 
       # =========================
-      # 🟡 6️⃣ 运行脚本（关键改动）
+      # 🟡 6️⃣ 运行脚本
       # =========================
       - name: Run script
-        working-directory: scripts
         run: |
-          mkdir -p screenshots
-          xvfb-run -a node register.js
+          mkdir -p scripts/screenshots
+          xvfb-run -a node scripts/register.js
 
       # =========================
-      # 🟡 7️⃣ 上传截图（路径也要改）
+      # 🟡 7️⃣ 上传截图
       # =========================
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
