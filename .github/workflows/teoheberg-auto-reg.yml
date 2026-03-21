@@ -1,14 +1,14 @@
 name: Buster Register (WARP)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
-    - cron: '0 18 * * *'   # 每天 UTC 18:00（≈ 波兰 19:00 冬季）
+    - cron: "0 18 * * *"
 
 jobs:
   run:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       # =========================
@@ -21,7 +21,7 @@ jobs:
       # 📥 私库（可选）
       # =========================
       - name: Checkout private repo (optional)
-        if: ${{ secrets.PRIVATE_REPO_TOKEN != '' }}
+        if: ${{ secrets.PRIVATE_REPO_TOKEN }}
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/teoheberg-reg
@@ -34,19 +34,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       # =========================
-      # 🌐 启用 WARP
+      # 🌐 启用 WARP（容错）
       # =========================
       - name: Enable WARP
+        continue-on-error: true
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
           mode: client
 
       # =========================
-      # 📦 安装系统依赖 + 音频
+      # 📦 安装系统依赖
       # =========================
       - name: Install dependencies
         run: |
@@ -68,10 +69,10 @@ jobs:
       # =========================
       - name: Check IP
         run: |
-          echo "🌍 当前 IP:"
-          curl -s https://api.ipify.org
+          echo "Current IP:"
+          curl -s https://api.ipify.org || true
           echo
-          curl -s https://ipinfo.io
+          curl -s https://ipinfo.io || true
 
       # =========================
       # 📦 安装 Playwright
@@ -96,7 +97,7 @@ jobs:
           mkdir -p extensions/buster/unpacked
           7z x -y extensions/buster/buster.zip -oextensions/buster/unpacked
 
-          echo "📦 Buster 解压完成"
+          echo "Buster unpacked"
           ls -R extensions/buster/unpacked | head -50
 
       # =========================
@@ -111,8 +112,8 @@ jobs:
       # 📤 上传截图
       # =========================
       - name: Upload screenshots
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: screenshots/**
