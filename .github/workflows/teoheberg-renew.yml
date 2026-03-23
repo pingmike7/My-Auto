@@ -3,7 +3,7 @@ name: Auto Renew Teoheberg
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 18 * * *' # 每天 UTC 18 点运行
 
 jobs:
   run:
@@ -11,20 +11,20 @@ jobs:
 
     steps:
       # =========================
-      # 📥 主仓库
+      # 📥 Checkout 主仓库
       # =========================
       - name: Checkout main repo
         uses: actions/checkout@v4
 
       # =========================
-      # 🟡 ⭐ 私有仓库
+      # 🟡 ⭐ Checkout 私有仓库
       # =========================
       - name: Checkout private repo
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/teoheberg-renew
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
-          path: scripts
+          path: scripts  # 私有 repo 会被拉到 scripts 文件夹
 
       # =========================
       # 🟢 Node.js
@@ -63,7 +63,7 @@ jobs:
           npx playwright install chromium
 
       # =========================
-      # 🔊 音频环境
+      # 🔊 虚拟音频环境（reCAPTCHA 音频必需）
       # =========================
       - name: Setup audio
         run: |
@@ -80,18 +80,18 @@ jobs:
           stack: dual
           mode: client
 
-
       # =========================
-      # 🚀 运行
+      # 🚀 运行主脚本
       # =========================
       - name: Run script
         env:
           TEOHEBERG_REMEMBER_WEB_COOKIE: ${{ secrets.TEOHEBERG_REMEMBER_WEB_COOKIE }}
         run: |
-          xvfb-run -a node main.js
+          # main.js 在私有仓库 scripts 根目录
+          xvfb-run -a node scripts/main.js
 
       # =========================
-      # 📸 调试
+      # 📸 上传调试文件
       # =========================
       - name: Upload debug
         if: always()
