@@ -8,6 +8,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # ⬅️ 限制 15 分钟
 
     steps:
       # =========================
@@ -36,7 +37,6 @@ jobs:
 
       # =========================
       # 🐍 Python（语音识别）
-      # =========================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -44,7 +44,6 @@ jobs:
 
       # =========================
       # 📦 安装依赖
-      # =========================
       - name: Install dependencies
         run: |
           npm init -y
@@ -57,14 +56,12 @@ jobs:
 
       # =========================
       # 🌐 浏览器
-      # =========================
       - name: Install Chromium
         run: |
           npx playwright install chromium
 
       # =========================
       # 🔊 虚拟音频环境（reCAPTCHA 音频必需）
-      # =========================
       - name: Setup audio
         run: |
           pulseaudio --start || true
@@ -73,7 +70,6 @@ jobs:
 
       # =========================
       # 🌐 WARP（可选）
-      # =========================
       - name: WARP
         uses: fscarmen/warp-on-actions@v1.3
         with:
@@ -82,7 +78,6 @@ jobs:
 
       # =========================
       # 🚀 运行主脚本
-      # =========================
       - name: Run script
         env:
           TEOHEBERG_REMEMBER_WEB_COOKIE: ${{ secrets.TEOHEBERG_REMEMBER_WEB_COOKIE }}
@@ -92,7 +87,6 @@ jobs:
 
       # =========================
       # 📸 上传调试文件
-      # =========================
       - name: Upload debug
         if: always()
         uses: actions/upload-artifact@v4
