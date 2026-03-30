@@ -81,6 +81,8 @@ jobs:
       - name: Run script
         env:
           TEOHEBERG_REMEMBER_WEB_COOKIE: ${{ secrets.TEOHEBERG_REMEMBER_WEB_COOKIE }}
+          TELEGRAM_CHAT_ID‎: ${{ secrets.TELEGRAM_CHAT_ID‎ }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           # main.js 在私有仓库 scripts 根目录
           xvfb-run -a node scripts/main.js
