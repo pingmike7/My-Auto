@@ -8,7 +8,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       # =========================
@@ -44,24 +44,21 @@ jobs:
           python-version: '3.11'
 
       # =========================
-      # 📦 安装依赖
+      # 📦 安装 Node + Python 依赖
       # =========================
       - name: Install dependencies
         run: |
           npm init -y
-          npm install playwright
-
+          npm install playwright axios
           sudo apt-get update
           sudo apt-get install -y xvfb ffmpeg curl p7zip-full pulseaudio
-
           pip install SpeechRecognition pydub
 
       # =========================
-      # 🌐 浏览器
+      # 🌐 安装 Chromium 浏览器
       # =========================
       - name: Install Chromium
-        run: |
-          npx playwright install chromium
+        run: npx playwright install chromium
 
       # =========================
       # 🔊 虚拟音频环境
@@ -73,7 +70,7 @@ jobs:
           pactl set-default-sink virtual_speaker || true
 
       # =========================
-      # 🌐 WARP（可选）
+      # 🌐 可选 WARP
       # =========================
       - name: WARP
         uses: fscarmen/warp-on-actions@v1.3
@@ -90,7 +87,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          xvfb-run -a node scripts/main.js
+          mkdir -p scripts/screenshots
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" node scripts/main.js
 
       # =========================
       # 📸 上传调试文件
