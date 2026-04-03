@@ -87,16 +87,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          mkdir -p scripts/screenshots
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" node scripts/main.js
-
-      # =========================
-      # 📸 上传调试文件
-      # =========================
-      - name: Upload debug
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug
-          path: scripts/screenshots
-          retention-days: 3
