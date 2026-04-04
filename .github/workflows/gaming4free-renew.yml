@@ -88,16 +88,6 @@ jobs:
           ls -R scripts/extensions/buster/unpacked | head -50
 
       # =========================
-      # 🟡 5️⃣ 调试 IP
-      # =========================
-      - name: Check IP
-        run: |
-          echo "🌍 当前 IP:"
-          curl -s https://api.ipify.org
-          echo
-          curl -s https://ipinfo.io
-
-      # =========================
       # 🟡 6️⃣ 运行脚本
       # =========================
       - name: Run script
