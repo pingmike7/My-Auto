@@ -36,15 +36,6 @@ jobs:
           node-version: 20
 
       # =========================
-      # 🟡 1️⃣ WARP
-      # =========================
-      - name: 创建WARP网络
-        uses: fscarmen/warp-on-actions@v1.3
-        with:
-          stack: dual
-          mode: client
-
-      # =========================
       # 🟡 2️⃣ 系统依赖（音频）
       # =========================
       - name: Install deps
@@ -62,7 +53,7 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🟡 3️⃣ 安装 Playwright（修复点）
+      # 🟡 3️⃣ 安装 Playwright
       # =========================
       - name: Install playwright
         run: |
@@ -86,6 +77,15 @@ jobs:
 
           echo "📦 Buster 解压完成"
           ls -R scripts/extensions/buster/unpacked | head -50
+
+      # =========================
+      # 🟡 ⭐ 最后再启用 WARP
+      # =========================
+      - name: 创建WARP网络
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: dual
+          mode: client
 
       # =========================
       # 🟡 6️⃣ 运行脚本
