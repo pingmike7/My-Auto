@@ -64,7 +64,7 @@ jobs:
             libatk-bridge2.0-0 \
             libgtk-3-0 \
             libxss1 \
-            libasound2t64
+            libasound2
 
           # Python 依赖
           pip install SpeechRecognition pydub
