@@ -3,7 +3,7 @@ name: gaming4free renew (WARP)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "3 * * * *"   # 每小时第 3 分钟执行（UTC）
+    - cron: "3 10 */2 * *"   # 每小时第 3 分钟执行（UTC）
 
 jobs:
   run:
