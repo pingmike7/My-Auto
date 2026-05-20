@@ -1,0 +1,11 @@
+{
+  "name": "g4f-game-timer-action",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "playwright": "^1.54.0"
+  }
+}
