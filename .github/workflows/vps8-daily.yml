@@ -9,9 +9,10 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
+
       # =========================
       # 📥 主仓库
       # =========================
@@ -19,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       # =========================
-      # 🔐 私库脚本
+      # 🔐 拉取私库
       # =========================
       - name: Checkout private repo
         uses: actions/checkout@v4
@@ -46,7 +47,7 @@ jobs:
           python-version: "3.11"
 
       # =========================
-      # 📦 极简系统依赖（避免卡死）
+      # 📦 系统依赖
       # =========================
       - name: Install system deps
         run: |
@@ -85,9 +86,12 @@ jobs:
           python -m pip install --upgrade pip
 
           pip install \
-            seleniumbase \
+            playwright \
             requests \
-            pysocks
+            pysocks \
+            hcaptcha-challenger
+
+          playwright install chromium
 
       # =========================
       # 🚀 安装 HY2
@@ -111,11 +115,15 @@ jobs:
         env:
           VPS8_BATCH: ${{ secrets.VPS8_BATCH }}
           VPS8_HY2_URL: ${{ secrets.VPS8_HY2_URL }}
+
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
+          # ⭐ 新增
+          VPS8_GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
+
         run: |
-          mkdir -p scripts/screenshots
+          mkdir -p screenshots
 
           xvfb-run -a \
             --server-args="-screen 0 1920x1080x24" \
