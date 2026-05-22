@@ -3,27 +3,27 @@ import requests
 from playwright.sync_api import sync_playwright
 
 # ── Telegram 通知 ──────────────────────────────────────────────
-TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '')
-TG_CHAT_ID   = os.environ.get('TG_CHAT_ID', '')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_CHAT_ID   = os.environ.get('TELEGRAM_CHAT_ID', '')
 
 def tg_send(text: str, photo_path: str = None):
     """发送 TG 文字消息，可附带截图。"""
-    if not TG_BOT_TOKEN or not TG_CHAT_ID:
-        print("⚠️  未配置 TG_BOT_TOKEN / TG_CHAT_ID，跳过通知。")
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("⚠️  未配置 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID，跳过通知。")
         return
     try:
         if photo_path and os.path.exists(photo_path):
-            url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendPhoto"
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
             with open(photo_path, 'rb') as f:
                 resp = requests.post(url, data={
-                    'chat_id': TG_CHAT_ID,
+                    'chat_id': TELEGRAM_CHAT_ID,
                     'caption': text,
                     'parse_mode': 'HTML'
                 }, files={'photo': f}, timeout=30)
         else:
-            url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
             resp = requests.post(url, data={
-                'chat_id': TG_CHAT_ID,
+                'chat_id': TELEGRAM_CHAT_ID,
                 'text': text,
                 'parse_mode': 'HTML'
             }, timeout=30)
