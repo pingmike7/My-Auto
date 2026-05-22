@@ -134,7 +134,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
           # ⭐ 新增 Gemini Key
-          VPS8_GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
 
           PYTHONUNBUFFERED: "1"
 
