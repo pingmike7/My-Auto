@@ -89,7 +89,7 @@ jobs:
           pip install --upgrade pip setuptools wheel
 
           pip install \
-            "hcaptcha-challenger>=0.19.0" \
+            "hcaptcha-challenger>=0.20.0" \
             google-genai \
             playwright \
             requests \
@@ -136,10 +136,6 @@ jobs:
 
           # ⭐ Gemini
           GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
-
-          # ⭐ 强制 Challenger 使用 Flash
-          GEMINI_MODEL: gemini-2.0-flash
-
           PYTHONUNBUFFERED: "1"
 
         run: |
