@@ -86,16 +86,17 @@ jobs:
       # =========================
       - name: Install Python deps
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel
 
           pip install \
+            "hcaptcha-challenger>=0.17.0" \
+            google-genai \
             playwright \
             requests \
             pysocks \
             pyyaml \
             aiofiles \
-            python-dotenv \
-            hcaptcha-challenger
+            python-dotenv
 
           playwright install chromium
 
@@ -133,18 +134,23 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-          # ⭐ 新增 Gemini Key
+          # ⭐ Gemini
           GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
+
+          # ⭐ 强制 Challenger 使用 Flash
+          GEMINI_MODEL: gemini-2.0-flash
 
           PYTHONUNBUFFERED: "1"
 
         run: |
+          echo "🚀 Start VPS8 Auto"
+
           xvfb-run -a \
             --server-args="-screen 0 1920x1080x24" \
             python3 scripts/main.py
 
       # =========================
-      # 📤 上传截图（失败时）
+      # 📤 上传截图
       # =========================
       - name: Upload screenshots
         if: always()
