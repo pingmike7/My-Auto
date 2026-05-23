@@ -34,7 +34,7 @@ jobs:
       # =========================
       - name: Random delay
         run: |
-          delay=$((RANDOM % 2))
+          delay=$((RANDOM % 120))
           echo "⏳ 随机延迟: ${delay}s"
           sleep $delay
 
