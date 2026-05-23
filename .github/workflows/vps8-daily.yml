@@ -58,6 +58,7 @@ jobs:
             curl \
             wget \
             unzip \
+            p7zip-full \
             fonts-liberation \
             libnss3 \
             libatk-bridge2.0-0 \
@@ -89,8 +90,6 @@ jobs:
           pip install --upgrade pip setuptools wheel
 
           pip install \
-            "hcaptcha-challenger>=0.20.0" \
-            google-genai \
             playwright \
             requests \
             pysocks \
@@ -99,6 +98,30 @@ jobs:
             python-dotenv
 
           playwright install chromium
+
+      # =========================
+      # 📦 下载 NopeCHA 插件
+      # =========================
+      - name: Download NopeCHA extension
+        run: |
+          mkdir -p scripts/extensions/nopecha
+
+          wget -O scripts/extensions/nopecha/chromium.zip \
+            https://github.com/NopeCHALLC/nopecha-extension/releases/latest/download/chromium.zip
+
+      # =========================
+      # 📦 解压 NopeCHA
+      # =========================
+      - name: Unpack NopeCHA extension
+        run: |
+          mkdir -p scripts/extensions/nopecha/unpacked
+
+          7z x -y \
+            scripts/extensions/nopecha/chromium.zip \
+            -oscripts/extensions/nopecha/unpacked
+
+          echo "📌 manifest.json:"
+          cat scripts/extensions/nopecha/unpacked/manifest.json
 
       # =========================
       # 🚀 安装 Hysteria2
@@ -134,8 +157,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-          # ⭐ Gemini
-          GEMINI_API_KEY: ${{ secrets.VPS8_GEMINI_API_KEY }}
+          NOPECHA_KEY: ${{ secrets.NOPECHA_KEY }}
+
           PYTHONUNBUFFERED: "1"
 
         run: |
