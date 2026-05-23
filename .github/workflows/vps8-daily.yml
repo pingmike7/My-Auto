@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
+    # UTC 16:10
     - cron: '10 16 * * *'
 
 jobs:
@@ -35,7 +36,9 @@ jobs:
       - name: Random delay
         run: |
           delay=$((RANDOM % 120))
+
           echo "⏳ 随机延迟: ${delay}s"
+
           sleep $delay
 
       # =========================
@@ -47,7 +50,7 @@ jobs:
           python-version: "3.11"
 
       # =========================
-      # 📦 系统依赖
+      # 📦 系统依赖（精简）
       # =========================
       - name: Install system deps
         run: |
@@ -58,55 +61,34 @@ jobs:
             curl \
             wget \
             unzip \
-            p7zip-full \
-            fonts-liberation \
-            libnss3 \
-            libatk-bridge2.0-0 \
-            libgtk-3-0 \
-            libxss1 \
-            libasound2t64 \
-            libgbm1 \
-            libu2f-udev \
-            xdg-utils
-
-      # =========================
-      # 🌐 安装 Chrome
-      # =========================
-      - name: Install Google Chrome
-        run: |
-          wget -q \
-            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-
-          sudo apt-get install -y \
-            ./google-chrome-stable_current_amd64.deb
-
-          google-chrome --version
+            p7zip-full
 
       # =========================
       # 🐍 安装 Python 依赖
       # =========================
       - name: Install Python deps
         run: |
-          pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade \
+            pip \
+            setuptools \
+            wheel
 
           pip install \
             playwright \
             requests \
-            pysocks \
-            pyyaml \
-            aiofiles \
-            python-dotenv
+            pysocks
 
           playwright install chromium
 
       # =========================
-      # 📦 下载 NopeCHA 插件
+      # 📦 下载 NopeCHA
       # =========================
       - name: Download NopeCHA extension
         run: |
           mkdir -p scripts/extensions/nopecha
 
-          wget -O scripts/extensions/nopecha/chromium.zip \
+          wget -q \
+            -O scripts/extensions/nopecha/chromium.zip \
             https://github.com/NopeCHALLC/nopecha-extension/releases/latest/download/chromium.zip
 
       # =========================
@@ -120,7 +102,8 @@ jobs:
             scripts/extensions/nopecha/chromium.zip \
             -oscripts/extensions/nopecha/unpacked
 
-          echo "📌 manifest.json:"
+          echo "📌 manifest.json"
+
           cat scripts/extensions/nopecha/unpacked/manifest.json
 
       # =========================
@@ -139,12 +122,11 @@ jobs:
           hysteria version
 
       # =========================
-      # 📂 创建目录
+      # 📂 创建截图目录
       # =========================
-      - name: Prepare dirs
+      - name: Prepare screenshots dir
         run: |
           mkdir -p screenshots
-          touch screenshots/.keep
 
       # =========================
       # ▶️ 执行脚本
@@ -156,8 +138,8 @@ jobs:
           VPS8_HY2_URL: ${{ secrets.VPS8_HY2_URL }}
 
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
         run: |
           echo "🚀 Start VPS8 Auto"
@@ -174,5 +156,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/
+
+          path: screenshots/**/*.png
+
+          if-no-files-found: ignore
+
+          compression-level: 6
+
           retention-days: 3
