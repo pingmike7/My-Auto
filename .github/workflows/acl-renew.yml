@@ -1,13 +1,18 @@
 name: ACLClouds Auto Renew
 
 on:
+  schedule:
+    - cron: '0 */2 * * *'   # 每两小时运行一次
+
   repository_dispatch:
     types: [googlecloud-trigger]
-  workflow_dispatch:
+
+  workflow_dispatch:        # 允许手动触发
 
 jobs:
   renew-job:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
