@@ -8,10 +8,8 @@ on:
 
 jobs:
   run:
-    runs-on: ubuntu-22.04
-
-    # ⭐ hcaptcha 时间长
-    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
 
@@ -36,7 +34,7 @@ jobs:
       # =========================
       - name: Random delay
         run: |
-          delay=$((RANDOM % 5))
+          delay=$((RANDOM % 2))
           echo "⏳ 随机延迟: ${delay}s"
           sleep $delay
 
@@ -61,17 +59,14 @@ jobs:
             wget \
             unzip \
             p7zip-full \
-            ca-certificates \
             fonts-liberation \
-            fonts-noto-color-emoji \
             libnss3 \
             libatk-bridge2.0-0 \
             libgtk-3-0 \
             libxss1 \
-            libasound2 \
+            libasound2t64 \
             libgbm1 \
             libu2f-udev \
-            libvulkan1 \
             xdg-utils
 
       # =========================
@@ -92,10 +87,7 @@ jobs:
       # =========================
       - name: Install Python deps
         run: |
-          pip install --upgrade \
-            pip \
-            setuptools \
-            wheel
+          pip install --upgrade pip setuptools wheel
 
           pip install \
             playwright \
@@ -114,8 +106,7 @@ jobs:
         run: |
           mkdir -p scripts/extensions/nopecha
 
-          wget \
-            -O scripts/extensions/nopecha/chromium.zip \
+          wget -O scripts/extensions/nopecha/chromium.zip \
             https://github.com/NopeCHALLC/nopecha-extension/releases/latest/download/chromium.zip
 
       # =========================
@@ -129,8 +120,7 @@ jobs:
             scripts/extensions/nopecha/chromium.zip \
             -oscripts/extensions/nopecha/unpacked
 
-          echo "📌 manifest.json"
-
+          echo "📌 manifest.json:"
           cat scripts/extensions/nopecha/unpacked/manifest.json
 
       # =========================
@@ -170,15 +160,13 @@ jobs:
 
           NOPECHA_KEY: ${{ secrets.NOPECHA_KEY }}
 
-          PLAYWRIGHT_BROWSERS_PATH: 0
-
           PYTHONUNBUFFERED: "1"
 
         run: |
           echo "🚀 Start VPS8 Auto"
 
           xvfb-run -a \
-            --server-args="-screen 0 1920x1080x24 -ac +extension RANDR" \
+            --server-args="-screen 0 1920x1080x24" \
             python3 scripts/main.py
 
       # =========================
@@ -189,7 +177,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/**
-          if-no-files-found: warn
+          path: screenshots/
           retention-days: 3
-          compression-level: 6
