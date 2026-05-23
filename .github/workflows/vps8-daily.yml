@@ -8,7 +8,7 @@ on:
 
 jobs:
   run:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
@@ -30,6 +30,15 @@ jobs:
           path: scripts
 
       # =========================
+      # ⏳ 随机延迟
+      # =========================
+      - name: Random delay
+        run: |
+          delay=$((RANDOM % 2))
+          echo "⏳ 随机延迟: ${delay}s"
+          sleep $delay
+
+      # =========================
       # 🐍 Python
       # =========================
       - name: Setup Python
@@ -49,21 +58,46 @@ jobs:
             curl \
             wget \
             unzip \
-            p7zip-full
+            p7zip-full \
+            fonts-liberation \
+            libnss3 \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libxss1 \
+            libasound2t64 \
+            libgbm1 \
+            libu2f-udev \
+            xdg-utils
 
       # =========================
-      # 🐍 Python 依赖
+      # 🌐 安装 Chrome
+      # =========================
+      - name: Install Google Chrome
+        run: |
+          wget -q \
+            https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+          sudo apt-get install -y \
+            ./google-chrome-stable_current_amd64.deb
+
+          google-chrome --version
+
+      # =========================
+      # 🐍 安装 Python 依赖
       # =========================
       - name: Install Python deps
         run: |
-          pip install --upgrade pip
+          pip install --upgrade pip setuptools wheel
 
           pip install \
             playwright \
             requests \
-            pysocks
+            pysocks \
+            pyyaml \
+            aiofiles \
+            python-dotenv
 
-          playwright install --with-deps chromium
+          playwright install chromium
 
       # =========================
       # 📦 下载 NopeCHA 插件
@@ -118,10 +152,12 @@ jobs:
       - name: Run Script
         env:
           VPS8_BATCH: ${{ secrets.VPS8_BATCH }}
+
           VPS8_HY2_URL: ${{ secrets.VPS8_HY2_URL }}
 
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
 
         run: |
           echo "🚀 Start VPS8 Auto"
@@ -138,5 +174,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/**
-          retention-days: 
+          path: screenshots/
+          retention-days: 3
