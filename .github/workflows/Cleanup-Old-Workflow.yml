@@ -12,64 +12,80 @@ permissions:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+
     steps:
-      # 1️⃣ Checkout 当前仓库
+      # 1️⃣ 安装 gh CLI（提前装，后面都要用）
+      - name: Setup tools
+        run: |
+          sudo apt update
+          sudo apt install -y gh
+
+      # 2️⃣ 清理 workflow runs
+      - name: 清理运行历史
+        if: always()
+        uses: MajorScruffy/delete-old-workflow-runs@v0.3.0
+        with:
+          repository: ${{ github.repository }}
+          older-than-seconds: 604800   # 7天
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # 3️⃣ 清理 artifacts + 生成日志
+      - name: 清理旧 artifacts
+        if: always()
+        run: |
+          echo "📦 Cleaning artifacts older than 7 days..."
+
+          cutoff=$(date -u -d "7 days ago" +%s)
+
+          LOG_BODY=""
+
+          artifacts=$(gh api repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[] | "\(.id) \(.created_at)"')
+
+          if [ -z "$artifacts" ]; then
+            LOG_BODY="$LOG_BODY• No artifacts found\n"
+          else
+            echo "$artifacts" | while read -r id created_at; do
+              created_ts=$(date -d "$created_at" +%s)
+
+              if [ "$created_ts" -lt "$cutoff" ]; then
+                echo "Deleting artifact $id"
+                gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+                LOG_BODY="$LOG_BODY• Deleted artifact $id\n"
+              fi
+            done
+          fi
+
+          # 写日志文件
+          mkdir -p repo
+          echo -e "$LOG_BODY" > repo/cleanup-log.txt
+
+      # 4️⃣ Checkout repo（用于写 README）
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           path: repo
 
-      # 2️⃣ 安装 gh CLI 和 jq
-      - name: Setup gh CLI
+      # 5️⃣ 写入 README 清理记录
+      - name: Update README log
+        working-directory: repo
         run: |
-          sudo apt update
-          sudo apt install -y gh jq
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
 
-      # 3️⃣ 清理 workflow runs + artifacts，并生成日志
-      - name: Cleanup old workflow runs and artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DAYS_TO_KEEP: 7
-          REPO: ${{ github.repository }}
-        run: |
-          cutoff=$(date -u -d "$DAYS_TO_KEEP days ago" +%Y-%m-%dT%H:%M:%SZ)
-          LOG_BODY=""
+          echo "### 🧹 Cleanup Log ($TIME)" > README.md
+          echo "" >> README.md
+          cat cleanup-log.txt >> README.md
 
-          echo "📦 Cleaning old workflow runs..."
-          runs=$(gh api repos/$REPO/actions/runs --jq ".workflow_runs[] | select(.created_at < \"$cutoff\") | .id")
-          if [ -z "$runs" ]; then
-            LOG_BODY="$LOG_BODY\t• No old workflow runs to delete\n"
-          else
-            for run_id in $runs; do
-              gh api -X DELETE repos/$REPO/actions/runs/$run_id
-              LOG_BODY="$LOG_BODY\t• Deleted workflow run $run_id\n"
-            done
-          fi
-
-          echo "📦 Cleaning old artifacts..."
-          artifacts=$(gh api repos/$REPO/actions/artifacts --jq ".artifacts[] | select(.created_at < \"$cutoff\") | .id")
-          if [ -z "$artifacts" ]; then
-            LOG_BODY="$LOG_BODY\t• No old artifacts to delete\n"
-          else
-            for art_id in $artifacts; do
-              gh api -X DELETE repos/$REPO/actions/artifacts/$art_id
-              LOG_BODY="$LOG_BODY\t• Deleted artifact $art_id\n"
-            done
-          fi
-
-          # 生成日志（北京时间）
-          LOG="### Cleanup Log ($(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S'))\n$LOG_BODY"
-
-          README="repo/README.md"
-
-          # ✅ 覆盖 README（只保留本次日志）
-          echo -e "$LOG" > "$README"
-
-      # 4️⃣ 提交 README.md
+      # 6️⃣ 提交更改
       - name: Commit README update
         working-directory: repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add README.md
-          git diff --cached --quiet || (git commit -m "🧹 Cleanup workflow runs & artifacts log" && git push origin HEAD:main)
+
+          git diff --cached --quiet || (
+            git commit -m "🧹 Cleanup workflow runs & artifacts log"
+            git push origin HEAD:main
+          )
