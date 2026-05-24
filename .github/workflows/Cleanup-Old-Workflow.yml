@@ -2,7 +2,7 @@ name: Cleanup Old Workflow Runs
 
 on:
   schedule:
-    - cron: '0 3 * * 5' # 每周五 UTC 03:00（北京时间 11:00）
+    - cron: '0 3 * * 5'
   workflow_dispatch:
 
 permissions:
@@ -14,29 +14,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 安装 gh CLI
+      # 1️⃣ checkout（必须最先）
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2️⃣ 安装工具
       - name: Setup tools
         run: |
           sudo apt update
           sudo apt install -y gh jq
 
-      # 2️⃣ 清理 workflow runs
-      - name: 清理运行历史
-        if: always()
+      # 3️⃣ 清理 workflow runs
+      - name: Clean workflow runs
         uses: MajorScruffy/delete-old-workflow-runs@v0.3.0
         with:
           repository: ${{ github.repository }}
-          older-than-seconds: 604800   # 7天
+          older-than-seconds: 604800
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      # 3️⃣ 清理 artifacts（带 gh 认证修复）
-      - name: 清理旧 artifacts
-        if: always()
+      # 4️⃣ 清理 artifacts + 生成日志（关键修复）
+      - name: Clean artifacts + generate log
         run: |
-          echo "📦 Cleaning artifacts older than 7 days..."
-
           export GH_TOKEN=${{ github.token }}
+
+          echo "📦 Cleaning artifacts older than 7 days..."
 
           cutoff=$(date -u -d "7 days ago" +%s)
 
@@ -44,8 +46,11 @@ jobs:
 
           artifacts=$(gh api repos/${{ github.repository }}/actions/artifacts --paginate --jq '.artifacts[] | "\(.id) \(.created_at)"')
 
+          # 🔥 强制保证文件存在（关键修复点）
+          touch cleanup-log.txt
+
           if [ -z "$artifacts" ]; then
-            LOG_BODY="• No artifacts found\n"
+            LOG_BODY="• No artifacts found"
           else
             while read -r id created_at; do
               created_ts=$(date -d "$created_at" +%s)
@@ -53,28 +58,26 @@ jobs:
               if [ "$created_ts" -lt "$cutoff" ]; then
                 echo "Deleting artifact $id"
                 gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
-                LOG_BODY="$LOG_BODY• Deleted artifact $id\n"
+                LOG_BODY="$LOG_BODY\n• Deleted artifact $id"
               fi
             done <<< "$artifacts"
           fi
 
           echo -e "$LOG_BODY" > cleanup-log.txt
 
-      # 4️⃣ Checkout repo
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      # 5️⃣ 写入 README（覆盖最新记录）
-      - name: Update README log
+      # 5️⃣ 写 README（安全版）
+      - name: Update README
         run: |
           TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
 
           echo "### 🧹 Cleanup Log ($TIME)" > README.md
           echo "" >> README.md
+
+          # 🔥 防炸写法（文件一定存在）
           cat cleanup-log.txt >> README.md
 
-      # 6️⃣ Commit & push
-      - name: Commit README update
+      # 6️⃣ commit
+      - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
