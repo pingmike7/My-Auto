@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 安装 gh CLI（提前装，后面都要用）
+      # 1️⃣ 安装 gh CLI
       - name: Setup tools
         run: |
           sudo apt update
-          sudo apt install -y gh
+          sudo apt install -y gh jq
 
       # 2️⃣ 清理 workflow runs
       - name: 清理运行历史
@@ -30,22 +30,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      # 3️⃣ 清理 artifacts + 生成日志
+      # 3️⃣ 清理 artifacts（带 gh 认证修复）
       - name: 清理旧 artifacts
         if: always()
         run: |
           echo "📦 Cleaning artifacts older than 7 days..."
 
+          export GH_TOKEN=${{ github.token }}
+
           cutoff=$(date -u -d "7 days ago" +%s)
 
           LOG_BODY=""
 
-          artifacts=$(gh api repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[] | "\(.id) \(.created_at)"')
+          artifacts=$(gh api repos/${{ github.repository }}/actions/artifacts --paginate --jq '.artifacts[] | "\(.id) \(.created_at)"')
 
           if [ -z "$artifacts" ]; then
-            LOG_BODY="$LOG_BODY• No artifacts found\n"
+            LOG_BODY="• No artifacts found\n"
           else
-            echo "$artifacts" | while read -r id created_at; do
+            while read -r id created_at; do
               created_ts=$(date -d "$created_at" +%s)
 
               if [ "$created_ts" -lt "$cutoff" ]; then
@@ -53,22 +55,17 @@ jobs:
                 gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
                 LOG_BODY="$LOG_BODY• Deleted artifact $id\n"
               fi
-            done
+            done <<< "$artifacts"
           fi
 
-          # 写日志文件
-          mkdir -p repo
-          echo -e "$LOG_BODY" > repo/cleanup-log.txt
+          echo -e "$LOG_BODY" > cleanup-log.txt
 
-      # 4️⃣ Checkout repo（用于写 README）
+      # 4️⃣ Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          path: repo
 
-      # 5️⃣ 写入 README 清理记录
+      # 5️⃣ 写入 README（覆盖最新记录）
       - name: Update README log
-        working-directory: repo
         run: |
           TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
 
@@ -76,9 +73,8 @@ jobs:
           echo "" >> README.md
           cat cleanup-log.txt >> README.md
 
-      # 6️⃣ 提交更改
+      # 6️⃣ Commit & push
       - name: Commit README update
-        working-directory: repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -87,5 +83,5 @@ jobs:
 
           git diff --cached --quiet || (
             git commit -m "🧹 Cleanup workflow runs & artifacts log"
-            git push origin HEAD:main
+            git push
           )
