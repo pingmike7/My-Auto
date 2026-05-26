@@ -1,30 +1,163 @@
-name: G4F Add 3 Hours
+name: G4F Runner
 
 on:
   workflow_dispatch:
 
   schedule:
-    # 每3小时运行一次
-    - cron: '0 */2 * * *'
+    - cron: '10 15 * * *'
+
+permissions:
+  contents: read
 
 jobs:
-  run-bot:
+
+  run:
+
     runs-on: ubuntu-latest
 
+    timeout-minutes: 20
+
+    concurrency:
+      group: g4f-runner
+      cancel-in-progress: false
+
     steps:
-      - name: Checkout
+
+      # ------------------------------
+      # 1️⃣ 拉取私库 g4f-control
+      # ------------------------------
+      - name: Checkout private repo
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          repository: ${{ github.repository_owner }}/g4f-control
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: scripts
 
-      - name: Install dependencies
-        run: npm install
+      # ------------------------------
+      # 2️⃣ 安装 Python
+      # ------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      # ------------------------------
+      # 3️⃣ 安装依赖
+      # ------------------------------
+      - name: Install Dependencies
+        working-directory: scripts
+        run: |
 
-      - name: Run script
-        run: npm start
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            xvfb \
+            wget \
+            unzip \
+            curl
+
+          pip install -U pip
+
+          pip install \
+            "seleniumbase>=4.31.0" \
+            "pyvirtualdisplay>=3.0" \
+            "requests>=2.31.0"
+
+      # ------------------------------
+      # 4️⃣ 安装 gost
+      # ------------------------------
+      - name: Install Gost
+        working-directory: scripts
+        run: |
+
+          wget -q \
+          https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz
+
+          gunzip gost-linux-amd64-2.11.5.gz
+
+          mv gost-linux-amd64-2.11.5 gost
+
+          chmod +x gost
+
+      # ------------------------------
+      # 5️⃣ 启动 socks5 中转
+      # ------------------------------
+      - name: Start Proxy
+        working-directory: scripts
+        env:
+          PROXY_SOCKS5: ${{ secrets.PROXY_SOCKS5 }}
+        run: |
+
+          if [ -z "$PROXY_SOCKS5" ]; then
+            echo "[INFO] 未配置代理"
+            exit 0
+          fi
+
+          echo "[INFO] 启动 gost 中转..."
+
+          ./gost \
+            -L socks5://127.0.0.1:1081 \
+            -F "$PROXY_SOCKS5" \
+            > gost.log 2>&1 &
+
+          sleep 5
+
+          echo "[INFO] 测试代理..."
+
+          for i in 1 2 3 4 5; do
+
+            if curl \
+              -x socks5h://127.0.0.1:1081 \
+              -s \
+              --max-time 20 \
+              https://api.ipify.org > /dev/null; then
+
+              echo "[INFO] 代理连接成功"
+
+              echo "LOCAL_PROXY=socks5://127.0.0.1:1081" >> $GITHUB_ENV
+
+              exit 0
+            fi
+
+            echo "[WARN] retry $i"
+
+            sleep 3
+
+          done
+
+          echo "[ERROR] 代理失败"
+
+          cat gost.log
+
+          exit 1
+
+      # ------------------------------
+      # 6️⃣ 安装 ChromeDriver
+      # ------------------------------
+      - name: Install ChromeDriver
+        working-directory: scripts
+        run: |
+          seleniumbase install chromedriver
+
+      # ------------------------------
+      # 7️⃣ 运行脚本
+      # ------------------------------
+      - name: Run Script
+        working-directory: scripts
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          PROXY_SOCKS5: ${{ env.LOCAL_PROXY }}
+        run: |
+          python g4f.py
+
+      # ------------------------------
+      # 8️⃣ 上传截图
+      # ------------------------------
+      - name: Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ github.run_number }}
+          path: scripts/output/screenshots/
+          retention-days: 3
