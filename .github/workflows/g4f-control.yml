@@ -1,187 +1,60 @@
-name: G4F Runner
+name: G4F-AddTime
 
 on:
   workflow_dispatch:
-
   schedule:
-    - cron: '10 15 * * *'
+    - cron: '0 */6 * * *'
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 jobs:
-  run:
+  renew:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 20
-
-    concurrency:
-      group: g4f-runner
-      cancel-in-progress: false
-
     steps:
-
-      # ==========================================
-      # 拉取私库
-      # ==========================================
-      - name: Checkout private repo
+      - name: Checkout Private Repo
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/g4f-control
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
-          path: scripts
+          fetch-depth: 0
 
-      # ==========================================
-      # Python
-      # ==========================================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      # ==========================================
-      # 安装依赖
-      # ==========================================
-      - name: Install Dependencies
+      - name: Install Linux deps
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgbm1 libnss3 libatk1.0-0 libcups2 libdrm2 libxkbcommon0
 
-          sudo apt-get update
-
-          sudo apt-get install -y \
-            xvfb \
-            wget \
-            unzip \
-            curl \
-            jq \
-            fonts-liberation \
-            libnss3 \
-            libxss1 \
-            libatk-bridge2.0-0 \
-            libgtk-3-0
-
-          pip install -U pip
-
-          pip install \
-            seleniumbase>=4.33.6 \
-            requests>=2.32.0
-
-      # ==========================================
-      # 安装 gost
-      # ==========================================
-      - name: Install Gost
-        working-directory: scripts
+      - name: Install Python deps
         run: |
+          pip install -r requirements.txt
 
-          wget -q \
-            https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz
-
-          gunzip gost-linux-amd64-2.11.5.gz
-
-          mv gost-linux-amd64-2.11.5 gost
-
-          chmod +x gost
-
-      # ==========================================
-      # 启动代理
-      # ==========================================
-      - name: Start Proxy
-        working-directory: scripts
-        env:
-          PROXY_SOCKS5: ${{ secrets.PROXY_SOCKS5 }}
-        run: |
-
-          if [ -z "$PROXY_SOCKS5" ]; then
-            echo "[INFO] no proxy"
-            exit 0
-          fi
-
-          echo "[INFO] starting gost..."
-
-          ./gost \
-            -L socks5://127.0.0.1:1081 \
-            -F "$PROXY_SOCKS5" \
-            > gost.log 2>&1 &
-
-          sleep 5
-
-          for i in 1 2 3 4 5; do
-
-            if curl \
-              -x socks5h://127.0.0.1:1081 \
-              -s \
-              --max-time 15 \
-              https://api.ipify.org > /dev/null; then
-
-              echo "[INFO] proxy ready"
-
-              echo "LOCAL_PROXY=socks5://127.0.0.1:1081" >> $GITHUB_ENV
-
-              exit 0
-            fi
-
-            echo "[WARN] retry $i"
-
-            sleep 3
-          done
-
-          echo "[ERROR] proxy failed"
-
-          cat gost.log
-
-          exit 1
-
-      # ==========================================
-      # Xvfb
-      # ==========================================
-      - name: Setup Display
-        run: |
-
-          export DISPLAY=:99
-
-          Xvfb :99 \
-            -screen 0 1920x1080x24 \
-            > /dev/null 2>&1 &
-
-          echo "DISPLAY=:99" >> $GITHUB_ENV
-
-      # ==========================================
-      # 安装 chromedriver
-      # ==========================================
-      - name: Install ChromeDriver
-        working-directory: scripts
-        run: |
-          seleniumbase install chromedriver
-
-      # ==========================================
-      # 运行脚本
-      # ==========================================
       - name: Run Script
-        working-directory: scripts
         env:
           DISPLAY: :99
-          PROXY_SOCKS5: ${{ env.LOCAL_PROXY }}
         run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
           python g4f.py
 
-      # ==========================================
-      # 上传截图
-      # ==========================================
+      - name: Commit
+        if: always()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add README.md storage_state.json || true
+          git commit -m "update state [skip ci]" || echo "No changes"
+          git push origin ${{ github.ref_name }} || echo "Push failed"
+
       - name: Upload Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots-${{ github.run_number }}
-          path: scripts/output/screenshots/
-          retention-days: 3
-
-      # ==========================================
-      # 清理旧运行
-      # ==========================================
-      - name: Cleanup Old Runs
-        uses: Mattraks/delete-workflow-runs@v2
-        with:
-          token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          delete_workflow_pattern: ${{ github.workflow }}
-          retain_days: 0
-          keep_minimum_runs: 1
+          name: g4f-results
+          path: "*.png"
