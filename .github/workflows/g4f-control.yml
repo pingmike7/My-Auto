@@ -3,7 +3,7 @@ name: G4F-AddTime
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */2 * * *'
 
 permissions:
   contents: write
@@ -41,16 +41,6 @@ jobs:
         run: |
           Xvfb :99 -screen 0 1920x1080x24 &
           python g4f.py
-
-      - name: Commit
-        if: always()
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          git add README.md storage_state.json || true
-          git commit -m "update state [skip ci]" || echo "No changes"
-          git push origin ${{ github.ref_name }} || echo "Push failed"
 
       - name: Upload Screenshots
         if: always()
