@@ -3,17 +3,20 @@ name: G4F-AddTime
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */2 * * *'
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
-  renew:
+  addtime:
+
     runs-on: ubuntu-latest
 
+    timeout-minutes: 20
+
     steps:
+
       - name: Checkout Private Repo
         uses: actions/checkout@v4
         with:
@@ -26,13 +29,22 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Linux deps
+      - name: Install Linux Dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgbm1 libnss3 libatk1.0-0 libcups2 libdrm2 libxkbcommon0
 
-      - name: Install Python deps
+          sudo apt-get install -y -qq \
+            xvfb \
+            libgbm1 \
+            libnss3 \
+            libatk1.0-0 \
+            libcups2 \
+            libdrm2 \
+            libxkbcommon0
+
+      - name: Install Python Dependencies
         run: |
+          pip install -U pip
           pip install -r requirements.txt
 
       - name: Run Script
@@ -40,21 +52,26 @@ jobs:
           DISPLAY: :99
         run: |
           Xvfb :99 -screen 0 1920x1080x24 &
+
           python g4f.py
 
-      - name: Commit
+      - name: Commit Logs + Screenshots
         if: always()
         run: |
+
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add README.md storage_state.json || true
-          git commit -m "update state [skip ci]" || echo "No changes"
-          git push origin ${{ github.ref_name }} || echo "Push failed"
+          git add README.md *.png || true
+
+          git commit -m "update g4f result [skip ci]" || echo "No changes"
+
+          git push origin HEAD || echo "Push failed"
 
       - name: Upload Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: g4f-results
-          path: "*.png"
+          path: |
+            *.png
