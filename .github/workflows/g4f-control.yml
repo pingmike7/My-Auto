@@ -12,7 +12,8 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+
+    timeout-minutes: 20
 
     concurrency:
       group: g4f-runner
@@ -20,9 +21,9 @@ jobs:
 
     steps:
 
-      # ==============================
-      # 1️⃣ 拉取 g4f-control
-      # ==============================
+      # ==========================================
+      # 拉取私库
+      # ==========================================
       - name: Checkout private repo
         uses: actions/checkout@v4
         with:
@@ -30,19 +31,20 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: scripts
 
-      # ==============================
-      # 2️⃣ Python
-      # ==============================
+      # ==========================================
+      # Python
+      # ==========================================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      # ==============================
-      # 3️⃣ 系统依赖 + Python依赖
-      # ==============================
+      # ==========================================
+      # 安装依赖
+      # ==========================================
       - name: Install Dependencies
         run: |
+
           sudo apt-get update
 
           sudo apt-get install -y \
@@ -50,100 +52,120 @@ jobs:
             wget \
             unzip \
             curl \
+            jq \
             fonts-liberation \
             libnss3 \
-            libatk-bridge2.0-0 \
             libxss1 \
+            libatk-bridge2.0-0 \
             libgtk-3-0
 
           pip install -U pip
 
           pip install \
-            seleniumbase>=4.31.0 \
-            pyvirtualdisplay>=3.0 \
-            requests>=2.31.0
+            seleniumbase>=4.33.6 \
+            requests>=2.32.0
 
-      # ==============================
-      # 4️⃣ 安装 gost
-      # ==============================
+      # ==========================================
+      # 安装 gost
+      # ==========================================
       - name: Install Gost
         working-directory: scripts
         run: |
-          wget -q https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz
+
+          wget -q \
+            https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz
+
           gunzip gost-linux-amd64-2.11.5.gz
+
           mv gost-linux-amd64-2.11.5 gost
+
           chmod +x gost
 
-      # ==============================
-      # 5️⃣ 启动 socks5 proxy
-      # ==============================
+      # ==========================================
+      # 启动代理
+      # ==========================================
       - name: Start Proxy
         working-directory: scripts
         env:
           PROXY_SOCKS5: ${{ secrets.PROXY_SOCKS5 }}
         run: |
+
           if [ -z "$PROXY_SOCKS5" ]; then
             echo "[INFO] no proxy"
             exit 0
           fi
 
-          echo "[INFO] start gost..."
+          echo "[INFO] starting gost..."
 
           ./gost \
             -L socks5://127.0.0.1:1081 \
             -F "$PROXY_SOCKS5" \
             > gost.log 2>&1 &
 
-          sleep 6
+          sleep 5
 
           for i in 1 2 3 4 5; do
-            if curl -x socks5h://127.0.0.1:1081 -s --max-time 15 https://api.ipify.org; then
-              echo ""
-              echo "[OK] proxy ready"
+
+            if curl \
+              -x socks5h://127.0.0.1:1081 \
+              -s \
+              --max-time 15 \
+              https://api.ipify.org > /dev/null; then
+
+              echo "[INFO] proxy ready"
+
               echo "LOCAL_PROXY=socks5://127.0.0.1:1081" >> $GITHUB_ENV
+
               exit 0
             fi
+
             echo "[WARN] retry $i"
+
             sleep 3
           done
 
           echo "[ERROR] proxy failed"
+
           cat gost.log
+
           exit 1
 
-      # ==============================
-      # 6️⃣ 设置 DISPLAY（关键修复）
-      # ==============================
-      - name: Setup Xvfb Display
+      # ==========================================
+      # Xvfb
+      # ==========================================
+      - name: Setup Display
         run: |
+
           export DISPLAY=:99
-          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+
+          Xvfb :99 \
+            -screen 0 1920x1080x24 \
+            > /dev/null 2>&1 &
+
           echo "DISPLAY=:99" >> $GITHUB_ENV
 
-      # ==============================
-      # 7️⃣ 安装 ChromeDriver
-      # ==============================
+      # ==========================================
+      # 安装 chromedriver
+      # ==========================================
       - name: Install ChromeDriver
         working-directory: scripts
         run: |
           seleniumbase install chromedriver
 
-      # ==============================
-      # 8️⃣ 运行脚本
-      # ==============================
+      # ==========================================
+      # 运行脚本
+      # ==========================================
       - name: Run Script
         working-directory: scripts
         env:
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          PROXY_SOCKS5: ${{ env.LOCAL_PROXY }}
           DISPLAY: :99
+          PROXY_SOCKS5: ${{ env.LOCAL_PROXY }}
         run: |
           python g4f.py
 
-      # ==============================
-      # 9️⃣ 上传截图
-      # ==============================
+      # ==========================================
+      # 上传截图
+      # ==========================================
       - name: Upload Screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -151,3 +173,15 @@ jobs:
           name: screenshots-${{ github.run_number }}
           path: scripts/output/screenshots/
           retention-days: 3
+
+      # ==========================================
+      # 清理旧运行
+      # ==========================================
+      - name: Cleanup Old Runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          delete_workflow_pattern: ${{ github.workflow }}
+          retain_days: 0
+          keep_minimum_runs: 1
