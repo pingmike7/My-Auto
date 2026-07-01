@@ -1,10 +1,10 @@
-name: vertos Register (WARP)
+name: vektal Register (WARP)
 
 on:
   workflow_dispatch:
 
   schedule:
-    - cron: "0 18 */7 * *"   # 🕕 每天18:00（UTC）
+    - cron: "0 18 * * *"   # 🕕 每天18:00（UTC）
 
 jobs:
   run:
