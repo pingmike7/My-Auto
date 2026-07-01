@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: "0 18 * * *"   # 🕕 每天18:00（UTC）
+    - cron: "0 18 * * *"   # 每天 18:00 UTC
 
 jobs:
   run:
@@ -13,14 +13,14 @@ jobs:
 
     steps:
       # =========================
-      # 🟡 0️⃣ 当前仓库
+      # 0️⃣ checkout 主仓库
       # =========================
       - uses: actions/checkout@v4
 
       # =========================
-      # 🟡 ⭐ 私有仓库
+      # 1️⃣ checkout 脚本仓库
       # =========================
-      - name: Checkout private repo
+      - name: Checkout scripts repo
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/teoheberg-reg
@@ -28,7 +28,7 @@ jobs:
           path: scripts
 
       # =========================
-      # 🟡 Node环境
+      # 2️⃣ Node 环境
       # =========================
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,21 +36,22 @@ jobs:
           node-version: 20
 
       # =========================
-      # 🟡 1️⃣ WARP
+      # 3️⃣ WARP 网络
       # =========================
-      - name: 创建WARP网络
+      - name: Enable WARP
         uses: fscarmen/warp-on-actions@v1.3
         with:
           stack: dual
           mode: client
 
       # =========================
-      # 🟡 2️⃣ 系统依赖（音频）
+      # 4️⃣ 系统依赖
       # =========================
-      - name: Install deps
+      - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb wget unzip curl jq p7zip-full \
+          sudo apt-get install -y \
+            xvfb wget unzip curl jq p7zip-full \
             pulseaudio alsa-utils ffmpeg
 
           pulseaudio --start --exit-idle-time=-1 || true
@@ -62,34 +63,39 @@ jobs:
           pactl set-default-source virtual_mic || true
 
       # =========================
-      # 🟡 3️⃣ 安装 Playwright（修复点）
+      # 5️⃣ 安装 Playwright + Stealth（关键修复）
       # =========================
-      - name: Install playwright
+      - name: Install dependencies
         run: |
+          cd scripts
+
           npm init -y
-          npm install playwright playwright-extra playwright-extra-plugin-stealth
+
+          npm install playwright playwright-extra puppeteer-extra-plugin-stealth
+
           npx playwright install chromium
 
       # =========================
-      # 🟡 5️⃣ 调试 IP
+      # 6️⃣ 检查 IP（确认 WARP）
       # =========================
       - name: Check IP
         run: |
-          echo "🌍 当前 IP:"
+          echo "🌍 Current IP:"
           curl -s https://api.ipify.org
-          echo
+          echo ""
           curl -s https://ipinfo.io
 
       # =========================
-      # 🟡 6️⃣ 运行脚本
+      # 7️⃣ 运行脚本
       # =========================
       - name: Run script
         run: |
-          mkdir -p scripts/screenshots
-          xvfb-run -a node scripts/vektal_register.js
+          cd scripts
+          mkdir -p screenshots
+          xvfb-run -a node vektal_register.js
 
       # =========================
-      # 🟡 7️⃣ 上传截图
+      # 8️⃣ 上传截图
       # =========================
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
