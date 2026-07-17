@@ -60,6 +60,10 @@ jobs:
 
       - name: 安装 Python 依赖
         run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          sudo apt-get install -y chromium-browser
+          pip install --upgrade pip
           pip install -r requirements.txt -q
 
       - name: 运行 Main 脚本
