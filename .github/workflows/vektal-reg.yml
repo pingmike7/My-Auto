@@ -2,9 +2,8 @@ name: vektal Register (WARP)
 
 on:
   workflow_dispatch:
-
   schedule:
-    - cron: "10 */5 * * *"   # 每天 18:00 UTC
+    - cron: "10 */5 * * *"   # 每天 18:00 UTC 等时间触发
 
 jobs:
   run:
@@ -15,7 +14,8 @@ jobs:
       # =========================
       # 0️⃣ checkout 主仓库
       # =========================
-      - uses: actions/checkout@v4
+      - name: Checkout main repo
+        uses: actions/checkout@v4
 
       # =========================
       # 1️⃣ checkout 脚本仓库
@@ -27,16 +27,32 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: scripts
 
-      # =========================
-      # 2️⃣ Node 环境
-      # =========================
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # ------------------------------
+      # 2️⃣ 安装 Python
+      # ------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 20
+          python-version: "3.10"
+
+      # ------------------------------
+      # 3️⃣ 安装依赖及系统组件
+      # ------------------------------
+      - name: Install Dependencies
+        run: |
+          # 更新包管理器并安装 xvfb 虚拟屏幕组件
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          
+          # 升级基础构建工具
+          python -m pip install --upgrade pip setuptools wheel
+          
+          # 安装 DrissionPage 及脚本所需的周边依赖
+          # 注意：这里补上了 pyvirtualdisplay
+          pip install DrissionPage requests pyvirtualdisplay psutil
 
       # =========================
-      # 3️⃣ WARP 网络
+      # 4️⃣ WARP 网络
       # =========================
       - name: Enable WARP
         uses: fscarmen/warp-on-actions@v1.3
@@ -45,38 +61,7 @@ jobs:
           mode: client
 
       # =========================
-      # 4️⃣ 系统依赖
-      # =========================
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            xvfb wget unzip curl jq p7zip-full \
-            pulseaudio alsa-utils ffmpeg
-
-          pulseaudio --start --exit-idle-time=-1 || true
-
-          pactl load-module module-null-sink sink_name=virtual_speaker || true
-          pactl set-default-sink virtual_speaker || true
-
-          pactl load-module module-virtual-source source_name=virtual_mic || true
-          pactl set-default-source virtual_mic || true
-
-      # =========================
-      # 5️⃣ 安装 Playwright + Stealth（关键修复）
-      # =========================
-      - name: Install dependencies
-        run: |
-          cd scripts
-
-          npm init -y
-
-          npm install playwright playwright-extra puppeteer-extra-plugin-stealth
-
-          npx playwright install chromium
-
-      # =========================
-      # 6️⃣ 检查 IP（确认 WARP）
+      # 5️⃣ 检查 IP（确认 WARP）
       # =========================
       - name: Check IP
         run: |
@@ -86,16 +71,17 @@ jobs:
           curl -s https://ipinfo.io
 
       # =========================
-      # 7️⃣ 运行脚本
+      # 6️⃣ 运行脚本
       # =========================
       - name: Run script
         run: |
           cd scripts
           mkdir -p screenshots
-          xvfb-run -a node vektal_register.js
+          # 修正了文件后缀名，并直接调用 python（脚本内部会自动管理 Xvfb）
+          python vektal_register.py
 
       # =========================
-      # 8️⃣ 上传截图
+      # 7️⃣ 上传截图
       # =========================
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
