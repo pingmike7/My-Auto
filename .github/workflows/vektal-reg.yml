@@ -1,4 +1,4 @@
-name: vektal Register (WARP)
+name: vektal Register (WARP) py
 
 on:
   workflow_dispatch:
