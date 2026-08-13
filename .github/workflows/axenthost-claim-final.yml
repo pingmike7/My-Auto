@@ -1,9 +1,10 @@
 name: AxentHost Auto Claim v2
 
 on:
-  # 每 5 分钟测试一次，确认 schedule 正常
+  # 每 5 分钟运行一次
   schedule:
     - cron: "20 18 * * *"
+
   # 手动触发
   workflow_dispatch:
 
@@ -41,17 +42,25 @@ jobs:
         working-directory: scripts
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
-          sudo apt-get install -y chromium-browser
+          sudo apt-get install -y xvfb chromium
           pip install --upgrade pip
           pip install -r requirements.txt -q
 
       # ------------------------------
-      # 4️⃣ 运行 AxentHost 脚本
+      # 4️⃣ 检查 Chromium
+      # ------------------------------
+      - name: Check Chromium
+        run: |
+          which chromium
+          chromium --version
+
+      # ------------------------------
+      # 5️⃣ 运行 AxentHost 脚本
       # ------------------------------
       - name: Run AxentHost claim script
         working-directory: scripts
         env:
           AXENT_BATCH: ${{ secrets.AXENT_BATCH }}
+          CHROME_BIN: /usr/bin/chromium
         run: |
           python axent_claim.py
